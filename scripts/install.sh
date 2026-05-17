@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # install.sh — installs mcp-postman from GitHub Releases
-# Usage: curl -sSfL https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.sh | sh
+# Usage: curl -sSfL https://raw.githubusercontent.com/jinkp/postman-go-mcp/master/scripts/install.sh | sh
 set -e
 
 REPO="jinkp/postman-go-mcp"

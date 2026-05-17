@@ -83,12 +83,12 @@ release:
 
     **Linux / macOS**
     ```bash
-    curl -sSfL https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.sh | sh
+    curl -sSfL https://raw.githubusercontent.com/jinkp/postman-go-mcp/master/scripts/install.sh | sh
     ```
 
     **Windows (PowerShell)**
     ```powershell
-    irm https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.ps1 | iex
+    irm https://raw.githubusercontent.com/jinkp/postman-go-mcp/master/scripts/install.ps1 | iex
     ```
 
     After installing, run the setup wizard:
@@ -108,7 +108,7 @@ brews:
       name: homebrew-tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    skip_upload: auto
+    skip_upload: true
     install: |
       bin.install "mcp-postman"
     test: |

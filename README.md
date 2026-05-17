@@ -12,13 +12,13 @@ An MCP (Model Context Protocol) server in Go that acts as a developer intelligen
 ### Linux / macOS
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.sh | sh
+curl -sSfL https://raw.githubusercontent.com/jinkp/postman-go-mcp/master/scripts/install.sh | sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/jinkp/postman-go-mcp/master/scripts/install.ps1 | iex
 ```
 
 ### Manual download

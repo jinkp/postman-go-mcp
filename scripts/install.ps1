@@ -1,5 +1,5 @@
 # install.ps1 — installs mcp-postman from GitHub Releases on Windows
-# Usage: irm https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/jinkp/postman-go-mcp/master/scripts/install.ps1 | iex
 #
 # Options (set before running):
 #   $env:INSTALL_DIR = "C:\custom\path"   # default: $env:LOCALAPPDATA\mcp-postman
