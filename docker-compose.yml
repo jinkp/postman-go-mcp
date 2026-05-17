@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  mcp-postman:
+    build: .
+    container_name: mcp-postman
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

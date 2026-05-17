@@ -1,0 +1,109 @@
+openapi: "3.0.0"
+info:
+  title: Petstore API
+  description: A sample API for demonstrating postman-go-mcp
+  version: "1.0.0"
+servers:
+  - url: https://petstore.example.com/v1
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      operationId: listPets
+      tags:
+        - pets
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of pets to return
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: A list of pets
+        "400":
+          description: Bad request
+    post:
+      summary: Create a pet
+      operationId: createPet
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                tag:
+                  type: string
+      responses:
+        "201":
+          description: Pet created
+        "400":
+          description: Bad request
+  /pets/{petId}:
+    get:
+      summary: Get a pet by ID
+      operationId: getPetById
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          description: The ID of the pet
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A single pet
+        "404":
+          description: Pet not found
+    delete:
+      summary: Delete a pet
+      operationId: deletePet
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Pet deleted
+        "404":
+          description: Pet not found
+  /owners:
+    get:
+      summary: List all owners
+      operationId: listOwners
+      tags:
+        - owners
+      responses:
+        "200":
+          description: A list of owners
+  /owners/{ownerId}/pets:
+    get:
+      summary: Get pets by owner
+      operationId: getPetsByOwner
+      tags:
+        - owners
+      parameters:
+        - name: ownerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of pets for this owner
+        "404":
+          description: Owner not found
