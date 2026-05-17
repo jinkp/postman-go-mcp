@@ -7,10 +7,19 @@ import (
 	"path/filepath"
 )
 
-// MCPServerEntry is the JSON structure for a single MCP server entry.
+// MCPServerEntry is the JSON structure for a Claude Code MCP server entry.
 type MCPServerEntry struct {
-	Command string   `json:"command"`
-	Args    []string `json:"args,omitempty"`
+	Command string            `json:"command"`
+	Args    []string          `json:"args,omitempty"`
+	Env     map[string]string `json:"env,omitempty"`
+}
+
+// OpenCodeMCPEntry is the JSON structure for an OpenCode MCP server entry.
+// OpenCode uses "mcp" (not "mcpServers") with a "type" field.
+type OpenCodeMCPEntry struct {
+	Type    string            `json:"type"`
+	Command string            `json:"command"`
+	Args    []string          `json:"args,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`
 }
 
@@ -23,11 +32,15 @@ type MergeResult struct {
 }
 
 // MergeConfig reads the existing config at configPath (or starts fresh),
-// merges the new MCP server entry, and writes atomically.
+// merges the new MCP server entry using the correct format for the given client,
+// and writes atomically.
 // It creates the directory if it doesn't exist.
 // It backs up the original file to configPath + ".bak" before writing.
-func MergeConfig(configPath, serverName, binaryPath string) (*MergeResult, error) {
-	entry := MCPServerEntry{Command: binaryPath}
+func MergeConfig(configPath, serverName, binaryPath string, opts ...MergeOption) (*MergeResult, error) {
+	o := defaultMergeOptions()
+	for _, opt := range opts {
+		opt(&o)
+	}
 
 	// Read existing config or start fresh
 	raw, err := os.ReadFile(configPath)
@@ -47,15 +60,8 @@ func MergeConfig(configPath, serverName, binaryPath string) (*MergeResult, error
 		return nil, fmt.Errorf("parse config (may contain comments or be invalid JSON): %w", err)
 	}
 
-	// Ensure mcpServers key exists
-	mcpServers, ok := cfg["mcpServers"].(map[string]interface{})
-	if !ok {
-		mcpServers = map[string]interface{}{}
-	}
-
-	// Set our server entry
-	mcpServers[serverName] = entry
-	cfg["mcpServers"] = mcpServers
+	// Merge entry using the correct format per client
+	mergeEntry(cfg, o.client, serverName, binaryPath)
 
 	// Marshal result
 	pretty, err := json.MarshalIndent(cfg, "", "  ")
@@ -97,10 +103,55 @@ func MergeConfig(configPath, serverName, binaryPath string) (*MergeResult, error
 	return result, nil
 }
 
-// PreviewJSON returns the JSON that would be written without modifying any files.
-func PreviewJSON(configPath, serverName, binaryPath string) (string, error) {
-	entry := MCPServerEntry{Command: binaryPath}
+// MergeOption configures MergeConfig behavior.
+type MergeOption func(*mergeOptions)
 
+type mergeOptions struct {
+	client Client
+}
+
+func defaultMergeOptions() mergeOptions {
+	return mergeOptions{client: ClientClaudeCode}
+}
+
+// ForClient sets which client format to use when merging the config entry.
+func ForClient(c Client) MergeOption {
+	return func(o *mergeOptions) {
+		o.client = c
+	}
+}
+
+// mergeEntry inserts the MCP server entry using the correct JSON structure per client.
+//
+// OpenCode format:   { "mcp": { "<name>": { "type": "local", "command": "...", "args": [...] } } }
+// Claude Code format: { "mcpServers": { "<name>": { "command": "..." } } }
+func mergeEntry(cfg map[string]interface{}, client Client, serverName, binaryPath string) {
+	switch client {
+	case ClientOpenCode:
+		section, ok := cfg["mcp"].(map[string]interface{})
+		if !ok {
+			section = map[string]interface{}{}
+		}
+		section[serverName] = OpenCodeMCPEntry{
+			Type:    "local",
+			Command: binaryPath,
+		}
+		cfg["mcp"] = section
+
+	default: // ClientClaudeCode
+		section, ok := cfg["mcpServers"].(map[string]interface{})
+		if !ok {
+			section = map[string]interface{}{}
+		}
+		section[serverName] = MCPServerEntry{
+			Command: binaryPath,
+		}
+		cfg["mcpServers"] = section
+	}
+}
+
+// PreviewJSON returns the JSON that would be written without modifying any files.
+func PreviewJSON(configPath, serverName, binaryPath string, client Client) (string, error) {
 	raw, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -116,12 +167,7 @@ func PreviewJSON(configPath, serverName, binaryPath string) (string, error) {
 		cfg = map[string]interface{}{}
 	}
 
-	mcpServers, ok := cfg["mcpServers"].(map[string]interface{})
-	if !ok {
-		mcpServers = map[string]interface{}{}
-	}
-	mcpServers[serverName] = entry
-	cfg["mcpServers"] = mcpServers
+	mergeEntry(cfg, client, serverName, binaryPath)
 
 	pretty, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {

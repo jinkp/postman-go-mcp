@@ -47,6 +47,39 @@ type WizardInput struct {
 	Confirmed  bool
 }
 
+// RunDirect performs a non-interactive setup for the specified client.
+// Used by CLI shortcuts like: mcp-postman setup opencode
+func RunDirect(client Client) error {
+	binaryPath, err := DetectBinaryPath()
+	if err != nil {
+		return fmt.Errorf("detect binary path: %w", err)
+	}
+
+	info := ClientInfoFor(client)
+	serverName := "postman"
+
+	fmt.Println()
+	fmt.Println(dimStyle.Render(fmt.Sprintf("  Configuring %s...", info.Name)))
+	fmt.Println(dimStyle.Render(fmt.Sprintf("  Config: %s", info.ConfigPath)))
+	fmt.Println(dimStyle.Render(fmt.Sprintf("  Binary: %s", binaryPath)))
+	fmt.Println()
+
+	result, err := MergeConfig(info.ConfigPath, serverName, binaryPath, ForClient(client))
+	if err != nil {
+		fmt.Println(errorStyle.Render(fmt.Sprintf("  ✗ %s — %v", info.Name, err)))
+		return fmt.Errorf("setup %s: %w", info.Name, err)
+	}
+
+	line := fmt.Sprintf("  ✔ %s configured", info.Name)
+	if !result.IsNew && result.BackupPath != "" {
+		line += dimStyle.Render(fmt.Sprintf(" (backup: %s)", result.BackupPath))
+	}
+	fmt.Println(successStyle.Render(line))
+	fmt.Println()
+	fmt.Println(successStyle.Render("Restart your AI assistant to activate the MCP server."))
+	return nil
+}
+
 // Run launches the interactive setup wizard and applies the configuration.
 func Run() error {
 	printBanner()
@@ -71,7 +104,7 @@ func Run() error {
 	var hasError bool
 	for _, client := range input.Clients {
 		info := ClientInfoFor(client)
-		result, err := MergeConfig(info.ConfigPath, input.ServerName, input.BinaryPath)
+		result, err := MergeConfig(info.ConfigPath, input.ServerName, input.BinaryPath, ForClient(client))
 		if err != nil {
 			fmt.Println(errorStyle.Render(fmt.Sprintf("  ✗ %s — %v", info.Name, err)))
 			hasError = true
@@ -116,7 +149,7 @@ func collectInputs() (*WizardInput, error) {
 		var sb strings.Builder
 		for _, c := range clients {
 			info := ClientInfoFor(c)
-			preview, _ := PreviewJSON(info.ConfigPath, serverName, binaryInput)
+			preview, _ := PreviewJSON(info.ConfigPath, serverName, binaryInput, c)
 			sb.WriteString(dimStyle.Render(fmt.Sprintf("%s  →  %s\n\n", info.Name, info.ConfigPath)))
 			sb.WriteString(codeStyle.Render(truncate(preview, 400)))
 			sb.WriteString("\n\n")

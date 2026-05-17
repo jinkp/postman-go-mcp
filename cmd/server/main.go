@@ -41,6 +41,26 @@ func main() {
 }
 
 func runSetup() {
+	// Check for direct client shortcuts: mcp-postman setup opencode / mcp-postman setup claude
+	if len(os.Args) > 2 {
+		var client setup.Client
+		switch os.Args[2] {
+		case "opencode":
+			client = setup.ClientOpenCode
+		case "claude":
+			client = setup.ClientClaudeCode
+		default:
+			fmt.Fprintf(os.Stderr, "unknown setup target: %q (use 'opencode' or 'claude')\n", os.Args[2])
+			os.Exit(1)
+		}
+		if err := setup.RunDirect(client); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// No argument — launch interactive wizard
 	if err := setup.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -48,6 +68,9 @@ func runSetup() {
 }
 
 func runMCPServer() {
+	// MCP transport owns stdout entirely — redirect all log output to stderr.
+	log.SetOutput(os.Stderr)
+
 	cfg := config.Load()
 
 	// Ensure data directory exists
@@ -89,10 +112,12 @@ func printHelp() {
 	fmt.Printf(`mcp-postman %s — Postman Developer Assistant MCP Server
 
 USAGE:
-  mcp-postman              Start the MCP server (stdio transport)
-  mcp-postman setup        Run the interactive setup wizard
-  mcp-postman version      Show version
-  mcp-postman help         Show this help
+  mcp-postman                  Start the MCP server (stdio transport)
+  mcp-postman setup            Run the interactive setup wizard
+  mcp-postman setup opencode   Configure OpenCode directly (non-interactive)
+  mcp-postman setup claude     Configure Claude Code directly (non-interactive)
+  mcp-postman version          Show version
+  mcp-postman help             Show this help
 
 ENVIRONMENT:
   MCP_TRANSPORT    Transport mode: stdio | sse (default: stdio)
@@ -111,7 +136,9 @@ MCP TOOLS:
   postman.environment.generate Generate dev/qa/stage/prod environments
   postman.audit.run            Run a full API quality audit
 
-SETUP WIZARD:
-  Run 'mcp-postman setup' to configure OpenCode or Claude Code automatically.
+SETUP:
+  'mcp-postman setup'            Interactive TUI wizard (select client, preview, confirm)
+  'mcp-postman setup opencode'   Direct: writes to OpenCode config (mcp.postman)
+  'mcp-postman setup claude'     Direct: writes to Claude Code config (mcpServers.postman)
 `, version)
 }
