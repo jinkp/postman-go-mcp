@@ -1,0 +1,115 @@
+version: 2
+
+project_name: mcp-postman
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: mcp-postman
+    main: ./cmd/server
+    binary: mcp-postman
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+    flags:
+      - -trimpath
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - .env.example
+      - LICENSE*
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: "New Features"
+      regexp: "^feat"
+      order: 0
+    - title: "Bug Fixes"
+      regexp: "^fix"
+      order: 1
+    - title: "Other Changes"
+      order: 999
+
+release:
+  github:
+    owner: jinkp
+    name: postman-go-mcp
+  draft: false
+  prerelease: auto
+  name_template: "v{{.Version}}"
+  header: |
+    ## postman-go-mcp v{{.Version}}
+
+    MCP server for Postman — API discovery, collection generation, docs, tests, audit and more.
+
+    ### Quick Install
+
+    **Linux / macOS**
+    ```bash
+    curl -sSfL https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.sh | sh
+    ```
+
+    **Windows (PowerShell)**
+    ```powershell
+    irm https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.ps1 | iex
+    ```
+
+    After installing, run the setup wizard:
+    ```bash
+    mcp-postman setup
+    ```
+  footer: |
+    **Full Changelog**: https://github.com/jinkp/postman-go-mcp/compare/{{.PreviousTag}}...{{.Tag}}
+
+brews:
+  - name: mcp-postman
+    description: "MCP server for Postman — API discovery, collection generation, docs, tests, and audit"
+    homepage: "https://github.com/jinkp/postman-go-mcp"
+    license: "MIT"
+    repository:
+      owner: jinkp
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    skip_upload: auto
+    install: |
+      bin.install "mcp-postman"
+    test: |
+      system "#{bin}/mcp-postman", "--version"

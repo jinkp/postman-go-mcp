@@ -1,11 +1,70 @@
 # postman-go-mcp
 
-An MCP (Model Context Protocol) server in Go that acts as a developer intelligence layer for APIs and Postman. Connect it to OpenCode, Claude, or any MCP-compatible AI assistant to automate API discovery, collection generation, documentation, testing, and quality auditing.
+An MCP (Model Context Protocol) server in Go that acts as a developer intelligence layer for APIs and Postman. Connect it to OpenCode or Claude Code to automate API discovery, collection generation, documentation, testing, and quality auditing.
 
-## Features
+[![CI](https://github.com/jinkp/postman-go-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/jinkp/postman-go-mcp/actions/workflows/ci.yml)
+[![Release](https://github.com/jinkp/postman-go-mcp/actions/workflows/release.yml/badge.svg)](https://github.com/jinkp/postman-go-mcp/releases)
 
-| MCP Tool | Description |
-|----------|-------------|
+---
+
+## Installation
+
+### Linux / macOS
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.sh | sh
+```
+
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/jinkp/postman-go-mcp/main/scripts/install.ps1 | iex
+```
+
+### Manual download
+
+Download the latest binary from [GitHub Releases](https://github.com/jinkp/postman-go-mcp/releases) for your platform:
+
+| Platform | File |
+|----------|------|
+| Linux amd64 | `mcp-postman_linux_amd64.tar.gz` |
+| Linux arm64 | `mcp-postman_linux_arm64.tar.gz` |
+| macOS amd64 | `mcp-postman_darwin_amd64.tar.gz` |
+| macOS arm64 (M1/M2) | `mcp-postman_darwin_arm64.tar.gz` |
+| Windows amd64 | `mcp-postman_windows_amd64.zip` |
+
+### Build from source
+
+```bash
+git clone https://github.com/jinkp/postman-go-mcp
+cd postman-go-mcp
+go build -o mcp-postman ./cmd/server
+```
+
+---
+
+## Setup
+
+After installing, run the interactive setup wizard:
+
+```bash
+mcp-postman setup
+```
+
+The wizard will:
+1. Ask which AI assistant to configure (OpenCode, Claude Code, or both)
+2. Auto-detect the binary path
+3. Show a preview of the config changes
+4. Write the config atomically with automatic backup
+
+No manual JSON editing required.
+
+---
+
+## MCP Tools
+
+| Tool | Description |
+|------|-------------|
 | `postman.scan.openapi` | Parse an OpenAPI 3.0 or Swagger 2.0 spec from a file path or URL |
 | `postman.collection.generate` | Generate a Postman Collection v2.1 from a spec |
 | `postman.collection.export` | Export a collection to a JSON file |
@@ -15,52 +74,37 @@ An MCP (Model Context Protocol) server in Go that acts as a developer intelligen
 | `postman.environment.generate` | Generate dev/qa/stage/prod Postman environments |
 | `postman.audit.run` | Run a full API quality audit and get a score |
 
-## Installation
+---
 
-```bash
-git clone https://github.com/isai-salazar-enc/postman-go-mcp
-cd postman-go-mcp
-cp .env.example .env
-go build -o mcp-postman ./cmd/server
-```
+## Manual Configuration
 
-## Usage
+If you prefer to configure manually, add this to your client config:
 
-### stdio (for AI assistants)
-
-```bash
-./mcp-postman
-```
-
-Add to your OpenCode / Claude Desktop config:
+**OpenCode** (`~/.config/opencode/opencode.json`):
 
 ```json
 {
   "mcpServers": {
     "postman": {
-      "command": "/path/to/mcp-postman"
+      "command": "/usr/local/bin/mcp-postman"
     }
   }
 }
 ```
 
-### Docker
+**Claude Code** (`~/.claude.json`):
 
-```bash
-docker compose up --build
+```json
+{
+  "mcpServers": {
+    "postman": {
+      "command": "/usr/local/bin/mcp-postman"
+    }
+  }
+}
 ```
 
-## Configuration
-
-Copy `.env.example` to `.env` and adjust:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MCP_TRANSPORT` | `stdio` | Transport: `stdio` or `sse` |
-| `MCP_HTTP_PORT` | `8080` | HTTP port (SSE mode only) |
-| `DB_PATH` | `./data/postman.db` | SQLite database path |
-| `LOG_LEVEL` | `info` | Log level: debug/info/warn/error |
-| `DRY_RUN` | `false` | When true, no files are written |
+---
 
 ## Example Workflow
 
@@ -84,25 +128,66 @@ Copy `.env.example` to `.env` and adjust:
    → postman.collection.export { collection: <output>, output_path: "./postman/collection.json" }
 ```
 
+---
+
+## Configuration
+
+Copy `.env.example` to `.env` and adjust:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_TRANSPORT` | `stdio` | Transport: `stdio` or `sse` |
+| `MCP_HTTP_PORT` | `8080` | HTTP port (SSE mode only) |
+| `DB_PATH` | `./data/postman.db` | SQLite database path |
+| `LOG_LEVEL` | `info` | Log level: debug/info/warn/error |
+| `DRY_RUN` | `false` | When true, no files are written |
+
+---
+
+## Docker
+
+```bash
+docker compose up --build
+```
+
+---
+
 ## Architecture
 
 Clean/Hexagonal architecture. Each domain is independent:
 
 ```
-cmd/server/         — Entry point
+cmd/server/         — Entry point + subcommand routing
 internal/
   mcp/              — MCP delivery layer (thin tool adapters)
-  discovery/        — OpenAPI/Swagger parser
+  discovery/        — OpenAPI/Swagger parser (libopenapi)
   postman/          — Postman Collection v2.1 builder
   docs/             — Documentation generator & auditor
   tests/            — Postman test script generator
   environments/     — Environment generator
   audit/            — Quality rules engine
-  storage/          — SQLite persistence
+  storage/          — SQLite persistence (no CGO)
   config/           — Configuration
   security/         — Path validation, header redaction
+  setup/            — Setup wizard logic
 pkg/postmanfmt/     — Shared Postman v2.1 Go types
+scripts/            — Install scripts (install.sh, install.ps1)
 ```
+
+---
+
+## Creating a Release
+
+Tag a version to trigger the automated release pipeline:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions will build binaries for all platforms and publish them to GitHub Releases automatically.
+
+---
 
 ## License
 
